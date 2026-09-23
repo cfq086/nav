@@ -1,4 +1,5 @@
 import { normalizeSortOrder } from '../utils/sort.js';
+import { bumpDataVersion } from '../utils/cache.js';
 
 function errorResponse(message, status) {
   return new Response(JSON.stringify({ code: status, message }), {
@@ -84,6 +85,7 @@ export async function createConfig(request, env) {
       'INSERT INTO sites (name, url, logo, desc, catelog, sort_order) VALUES (?, ?, ?, ?, ?, ?)'
     ).bind(sName, sUrl, sLogo, sDesc, sCatelog, sortVal).run();
 
+    await bumpDataVersion(env);
     return jsonResponse({ code: 201, message: 'Config created successfully', insert }, 201);
   } catch (e) {
     return errorResponse(`Failed to create config: ${e.message}`, 500);
@@ -108,6 +110,7 @@ export async function updateConfig(request, env, id) {
     ).bind(sName, sUrl, sLogo, sDesc, sCatelog, sortVal, id).run();
 
     if (!update.meta.changes) return errorResponse('Config not found', 404);
+    await bumpDataVersion(env);
     return jsonResponse({ code: 200, message: 'Config updated successfully' });
   } catch (e) {
     return errorResponse(`Failed to update config: ${e.message}`, 500);
@@ -118,6 +121,7 @@ export async function deleteConfig(env, id) {
   try {
     const del = await env.NAV_DB.prepare('DELETE FROM sites WHERE id = ?').bind(id).run();
     if (!del.meta.changes) return errorResponse('Config not found', 404);
+    await bumpDataVersion(env);
     return jsonResponse({ code: 200, message: 'Config deleted successfully' });
   } catch (e) {
     return errorResponse(`Failed to delete config: ${e.message}`, 500);
@@ -154,6 +158,7 @@ export async function importConfig(request, env) {
     });
 
     await env.NAV_DB.batch(stmts);
+    await bumpDataVersion(env);
     return jsonResponse({ code: 201, message: `Config imported successfully. ${sitesToImport.length} items added.` }, 201);
   } catch (e) {
     return errorResponse(`Failed to import config: ${e.message}`, 500);

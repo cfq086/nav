@@ -1,4 +1,5 @@
 import { normalizeSortOrder } from '../utils/sort.js';
+import { bumpDataVersion } from '../utils/cache.js';
 
 function errorResponse(message, status) {
   return new Response(JSON.stringify({ code: status, message }), {
@@ -56,6 +57,7 @@ export async function updateCategoryOrder(request, env, categoryName) {
 
     if (body && body.reset) {
       await env.NAV_DB.prepare('DELETE FROM category_orders WHERE catelog = ?').bind(normalized).run();
+      await bumpDataVersion(env);
       return jsonResponse({ code: 200, message: 'Category order reset successfully' });
     }
 
@@ -64,6 +66,7 @@ export async function updateCategoryOrder(request, env, categoryName) {
       'INSERT INTO category_orders (catelog, sort_order) VALUES (?, ?) ON CONFLICT(catelog) DO UPDATE SET sort_order = excluded.sort_order'
     ).bind(normalized, sortVal).run();
 
+    await bumpDataVersion(env);
     return jsonResponse({ code: 200, message: 'Category order updated successfully' });
   } catch (e) {
     return errorResponse(`Failed to update category order: ${e.message}`, 500);

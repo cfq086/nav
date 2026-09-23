@@ -1,4 +1,5 @@
 import { isSubmissionEnabled } from '../admin/auth.js';
+import { bumpDataVersion } from '../utils/cache.js';
 
 function errorResponse(message, status) {
   return new Response(JSON.stringify({ code: status, message }), {
@@ -37,6 +38,7 @@ export async function approvePendingConfig(env, id) {
       'INSERT INTO sites (name, url, logo, desc, catelog, sort_order) VALUES (?, ?, ?, ?, ?, 9999)'
     ).bind(config.name, config.url, config.logo, config.desc, config.catelog).run();
     await env.NAV_DB.prepare('DELETE FROM pending_sites WHERE id = ?').bind(id).run();
+    await bumpDataVersion(env);
     return jsonResponse({ code: 200, message: 'Pending config approved successfully' });
   } catch (e) {
     return errorResponse(`Failed to approve pending config: ${e.message}`, 500);
